@@ -1,0 +1,25 @@
+
+# Variables
+DATASTORE="HDD_datastore1"
+BASE_VM="RHEL9"
+NEW_VM="TEMPLATE_RHEL9"
+
+# 1. Apagar la VM base
+vim-cmd vmsvc/getallvms       
+vim-cmd vmsvc/power.off <VMID>
+
+# 2. Copiar el directorio de la VM base
+cp -r /vmfs/volumes/$DATASTORE/$BASE_VM /vmfs/volumes/$DATASTORE/$NEW_VM
+
+# 3. Renombrar el archivo .vmx
+mv /vmfs/volumes/$DATASTORE/$NEW_VM/$BASE_VM.vmx /vmfs/volumes/$DATASTORE/$NEW_VM/$NEW_VM.vmx
+
+# 4. Editar el .vmx para cambiar el nombre
+sed -i "s/displayName = \"$BASE_VM\"/displayName = \"$NEW_VM\"/" /vmfs/volumes/$DATASTORE/$NEW_VM/$NEW_VM.vmx
+
+# 5. Registrar la nueva VM
+vim-cmd solo/registervm /vmfs/volumes/$vim-cmd solo/registervm /vmfs/volumes/$DATASTORE/$NEW_VM/$NEW_VM.vmx
+
+# 6. Encender la nueva VM
+vim-cmd vmsvc/getallvms
+vim-cmd vmsvc/power.on <VMID>
