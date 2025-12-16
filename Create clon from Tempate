@@ -1,0 +1,56 @@
+#!/bin/sh
+
+# =========================
+# Variables
+# =========================
+DATASTORE="HDD_datastore1"
+TEMPLATE="TP_RH9"       # Nombre de la template
+NEW_VM="VM_01"
+
+VM_FOLDER="/vmfs/volumes/$DATASTORE"
+
+# =========================
+# 1. Verificar existencia de la template
+# =========================
+TEMPLATE_VMID=$(vim-cmd vmsvc/getallvms | awk -v vm="$TEMPLATE" '$2==vm {print $1}')
+
+if [ -z "$TEMPLATE_VMID" ]; then
+    echo "ERROR: No se ha encontrado la template: $TEMPLATE"
+    exit 1
+fi
+
+echo "Template '$TEMPLATE' encontrada con VMID: $TEMPLATE_VMID"
+
+# =========================
+# 2. Clonar nueva VM desde template
+# =========================
+SRC="$VM_FOLDER/$TEMPLATE"
+DST="$VM_FOLDER/$NEW_VM"
+TEMPLATE_VMX="$SRC/$TEMPLATE.vmx"
+NEW_VMX="$DST/$NEW_VM.vmx"
+
+# Copiar carpeta de template
+cp -r "$SRC" "$DST"
+
+# Renombrar VMX
+mv "$DST/$TEMPLATE.vmx" "$NEW_VMX"
+
+# Ajustar displayName
+sed -i "s|^displayName = \".*\"|displayName = \"$NEW_VM\"|" "$NEW_VMX"
+
+# Limpiar UUID y MAC
+sed -i '/uuid.bios/d' "$NEW_VMX"
+sed -i '/uuid.location/d' "$NEW_VMX"
+sed -i '/ethernet.*address/d' "$NEW_VMX"
+
+# Registrar nueva VM
+NEW_VMID=$(vim-cmd solo/registervm "$NEW_VMX" 0 | awk '{print $NF}')
+
+echo "=================================="
+echo "Nueva VM '$NEW_VM' registrada con VMID: $NEW_VMID"
+echo "Encender VM automáticamente..."
+vim-cmd vmsvc/power.on "$NEW_VMID"
+echo "=================================="
+
+# Mostrar todas las VMs
+vim-cmd vmsvc/getallvms
