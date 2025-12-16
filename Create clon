@@ -1,0 +1,70 @@
+#!/bin/sh
+
+# =========================
+# Variables
+# =========================
+DATASTORE_ORIGEN="HDD_datastore1"
+DATASTORE_REMOTE="HDD_datastore2"
+BASE_VM="RHEL9"
+NEW_VM="ANSIBLE"
+
+SRC="/vmfs/volumes/$DATASTORE_ORIGEN/$BASE_VM"
+DST="/vmfs/volumes/$DATASTORE_REMOTE/$NEW_VM"
+VMX="$DST/$NEW_VM.vmx"
+
+# =========================
+# 1. Obtener VMID de la VM base
+# =========================
+BASE_VMID=$(vim-cmd vmsvc/getallvms | awk -v vm="$BASE_VM" '$2==vm {print $1}')
+
+if [ -z "$BASE_VMID" ]; then
+  echo "ERROR: No se ha encontrado la VM base: $BASE_VM"
+  exit 1
+fi
+
+echo "VM base '$BASE_VM' encontrada con VMID: $BASE_VMID"
+
+# =========================
+# 2. Apagado limpio (secuencial)
+# =========================
+vim-cmd vmsvc/power.shutdown "$BASE_VMID"
+
+# Esperar a que se apague (opcional: ajustar tiempo según VM)
+sleep 10
+
+# =========================
+# 3. Copiar VM
+# =========================
+cp -r "$SRC" "$DST"
+
+# =========================
+# 4. Renombrar VMX
+# =========================
+mv "$DST/$BASE_VM.vmx" "$VMX"
+
+# =========================
+# 5. Forzar displayName (simplificado con sed)
+# =========================
+sed -i "s|^displayName = \".*\"|displayName = \"$NEW_VM\"|" "$VMX"
+
+# =========================
+# 6. Limpiar UUID y MAC
+# =========================
+sed -i '/uuid.bios/d' "$VMX"
+sed -i '/uuid.location/d' "$VMX"
+sed -i '/ethernet.*address/d' "$VMX"
+
+# =========================
+# 7. Registrar VM (root pool)
+# =========================
+vim-cmd solo/registervm "$VMX" 0
+
+# =========================
+# 8. Mostrar VMID nuevo
+# =========================
+vim-cmd vmsvc/getallvms
+
+# =========================
+# 9. Encender VM manualmente
+# =========================
+# vim-cmd vmsvc/power.on <VMID_NUEVO>
