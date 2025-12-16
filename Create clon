@@ -1,101 +1,46 @@
-
 DATASTORE_ORIGEN="HDD_datastore1"
 DATASTORE_REMOTE="HDD_datastore2"
 BASE_VM="RHEL9"
-NEW_VM="VM_01"
+NEW_VM="ANSIBLE"
 
 SRC="/vmfs/volumes/$DATASTORE_ORIGEN/$BASE_VM"
 DST="/vmfs/volumes/$DATASTORE_REMOTE/$NEW_VM"
 VMX="$DST/$NEW_VM.vmx"
 
-# =========================
-# 1. Obtener VMID de la VM base
-# =========================
 BASE_VMID=$(vim-cmd vmsvc/getallvms | awk -v vm="$BASE_VM" '$2==vm {print $1}')
-
 if [ -z "$BASE_VMID" ]; then
     echo "ERROR: No se ha encontrado la VM base: $BASE_VM"
     exit 1
 fi
-echo "VM base '$BASE_VM' encontrada con VMID: $BASE_VMID"
 
-# =========================
-# 2. Apagado limpio de la VM base
-# =========================
-vim-cmd vmsvc/power.shutdown "$BASE_VMID"
-echo "Esperando a que la VM se apague..."
-while [ "$(vim-cmd vmsvc/power.getstate $BASE_VMID | tail -1)" != "Powered off" ]; do
-    sleep 5
-done
-echo "VM '$BASE_VM' apagada."
-
-# =========================
-# 3. Verificar carpeta de destino
-# =========================
-if [ -d "$DST" ]; then
-    echo "ERROR: La carpeta de destino ya existe: $DST"
-    exit 1
-fi
-
-# =========================
-# 4. Copiar VM
-# =========================
 cp -r "$SRC" "$DST"
-echo "VM copiada a $DST"
 
-# =========================
-# 5. Renombrar VMX
-# =========================
 mv "$DST/$BASE_VM.vmx" "$VMX"
-echo "VMX renombrado a $VMX"
 
-# =========================
-# 6. Forzar displayName (modifica si existe, añade si no)
-# =========================
 if grep -q '^displayName' "$VMX"; then
     sed -i "s|^displayName = \".*\"|displayName = \"$NEW_VM\"|" "$VMX"
 else
     echo "displayName = \"$NEW_VM\"" >> "$VMX"
 fi
-echo "displayName actualizado a $NEW_VM"
 
-# =========================
-# 7. Limpiar MACs antiguas
-# =========================
 sed -i '/ethernet.*address/d' "$VMX"
-echo "MACs antiguas eliminadas"
-
-# =========================
-# 8. Limpiar uuid.bios y uuid.action, luego autogenerar uuid.bios
-# =========================
 NEW_UUID=$(uuidgen)
 echo "Nuevo uuid.bios generado: $NEW_UUID"
 
-# Si uuid.bios ya existe, modificar; si no, añadir
 if grep -q '^uuid.bios' "$VMX"; then
     sed -i "s|^uuid.bios = \".*\"|uuid.bios = \"$NEW_UUID\"|" "$VMX"
 else
     echo "uuid.bios = \"$NEW_UUID\"" >> "$VMX"
 fi
 
-# Si uuid.action ya existe, modificar; si no, añadir
 if grep -q '^uuid.action' "$VMX"; then
     sed -i "s|^uuid.action = \".*\"|uuid.action = \"create\"|" "$VMX"
 else
     echo "uuid.action = \"create\"" >> "$VMX"
 fi
 
-echo "UUID y acción actualizados correctamente en el VMX"
-
-# =========================
-# 9. Registrar VM
-# =========================
 vim-cmd solo/registervm "$VMX" 0
-echo "VM registrada correctamente"
 
-# =========================
-# 10. Mostrar VMID nuevo
-# =========================
 vim-cmd vmsvc/getallvms
-echo "El clon '$NEW_VM' está listo para encender y registrar en Red Hat"
-echo "Puedes encender la VM con: vim-cmd vmsvc/power.on <VMID_NUEVO>"
+
+
