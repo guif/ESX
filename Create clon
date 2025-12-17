@@ -1,3 +1,5 @@
+#!/bin/sh
+
 DATASTORE_ORIGEN="HDD_datastore1"
 DATASTORE_REMOTE="HDD_datastore2"
 BASE_VM="RHEL9"
@@ -13,34 +15,38 @@ if [ -z "$BASE_VMID" ]; then
     exit 1
 fi
 
+# Copiar VM base
 cp -r "$SRC" "$DST"
 
+# Renombrar VMX
 mv "$DST/$BASE_VM.vmx" "$VMX"
 
+# Forzar displayName correcto
 if grep -q '^displayName' "$VMX"; then
-    sed -i "s|^displayName = \".*\"|displayName = \"$NEW_VM\"|" "$VMX"
+    sed -i "s/^displayName = \".*\"/displayName = \"$NEW_VM\"/" "$VMX"
 else
     echo "displayName = \"$NEW_VM\"" >> "$VMX"
 fi
 
+# Limpiar MACs
 sed -i '/ethernet.*address/d' "$VMX"
-NEW_UUID=$(uuidgen)
-echo "Nuevo uuid.bios generado: $NEW_UUID"
 
-if grep -q '^uuid.bios' "$VMX"; then
-    sed -i "s|^uuid.bios = \".*\"|uuid.bios = \"$NEW_UUID\"|" "$VMX"
-else
-    echo "uuid.bios = \"$NEW_UUID\"" >> "$VMX"
-fi
+# --------------------------------------------------
+# FORZAR regeneración UUID (ESXi way)
+# --------------------------------------------------
 
+# Eliminar cualquier uuid.bios existente
+sed -i '/^uuid.bios/d' "$VMX"
+
+# Forzar creación de UUID nuevo al arrancar
 if grep -q '^uuid.action' "$VMX"; then
-    sed -i "s|^uuid.action = \".*\"|uuid.action = \"create\"|" "$VMX"
+    sed -i 's/^uuid.action = ".*"/uuid.action = "create"/' "$VMX"
 else
-    echo "uuid.action = \"create\"" >> "$VMX"
+    echo 'uuid.action = "create"' >> "$VMX"
 fi
 
+# Registrar VM (SIN "0")
 vim-cmd solo/registervm "$VMX"
 
+# Verificar
 vim-cmd vmsvc/getallvms
-
-
