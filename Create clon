@@ -39,7 +39,7 @@ else
     echo "uuid.action = \"create\"" >> "$VMX"
 fi
 
-vim-cmd solo/registervm "$VMX" 0
+vim-cmd solo/registervm "$VMX"
 
 vim-cmd vmsvc/getallvms
 
