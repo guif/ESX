@@ -9,44 +9,41 @@ SRC="/vmfs/volumes/$DATASTORE_ORIGEN/$BASE_VM"
 DST="/vmfs/volumes/$DATASTORE_REMOTE/$NEW_VM"
 VMX="$DST/$NEW_VM.vmx"
 
+echo 'Recuperar VM's actuales'
 BASE_VMID=$(vim-cmd vmsvc/getallvms | awk -v vm="$BASE_VM" '$2==vm {print $1}')
 if [ -z "$BASE_VMID" ]; then
     echo "ERROR: No se ha encontrado la VM base: $BASE_VM"
     exit 1
 fi
 
-# Copiar VM base
+echo 'Copiar VM base'
 cp -r "$SRC" "$DST"
 
-# Renombrar VMX
+echo 'Renombrar VMX'
 mv "$DST/$BASE_VM.vmx" "$VMX"
 
-# Forzar displayName correcto
+echo 'Forzar displayName correcto'
 if grep -q '^displayName' "$VMX"; then
     sed -i "s/^displayName = \".*\"/displayName = \"$NEW_VM\"/" "$VMX"
 else
     echo "displayName = \"$NEW_VM\"" >> "$VMX"
 fi
 
-# Limpiar MACs
+echo 'Limpiar MACs'
 sed -i '/ethernet.*address/d' "$VMX"
 
-# --------------------------------------------------
-# FORZAR regeneración UUID (ESXi way)
-# --------------------------------------------------
-
-# Eliminar cualquier uuid.bios existente
+echo 'Eliminar cualquier uuid.bios existente'
 sed -i '/^uuid.bios/d' "$VMX"
 
-# Forzar creación de UUID nuevo al arrancar
+echo 'Forzar creación de UUID nuevo al arrancar'
 if grep -q '^uuid.action' "$VMX"; then
     sed -i 's/^uuid.action = ".*"/uuid.action = "create"/' "$VMX"
 else
     echo 'uuid.action = "create"' >> "$VMX"
 fi
 
-# Registrar VM (SIN "0")
+echo 'Registrar VM'
 vim-cmd solo/registervm "$VMX"
 
-# Verificar
+echo 'Verificar'
 vim-cmd vmsvc/getallvms
