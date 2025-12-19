@@ -9,7 +9,7 @@ SRC="/vmfs/volumes/$DATASTORE_ORIGEN/$BASE_VM"
 DST="/vmfs/volumes/$DATASTORE_REMOTE/$NEW_VM"
 VMX="$DST/$NEW_VM.vmx"
 
-echo 'Recuperar VM's actuales'
+echo 'Recuperar VMs actuales'
 BASE_VMID=$(vim-cmd vmsvc/getallvms | awk -v vm="$BASE_VM" '$2==vm {print $1}')
 if [ -z "$BASE_VMID" ]; then
     echo "ERROR: No se ha encontrado la VM base: $BASE_VM"
