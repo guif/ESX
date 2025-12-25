@@ -23,7 +23,7 @@ cp -r "$SRC" "$DST"
 cd $DST/
 
 echo 'Renombrar VMX'
-mv "$DST/$BASE_VM.vmx" "$VMX"
+cp -rp "$DST/$BASE_VM.vmx" "$VMX"
 
 echo 'Forzar displayName correcto'
 if grep -q '^displayName' "$VMX"; then
