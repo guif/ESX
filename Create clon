@@ -17,7 +17,7 @@ if [ -z "$BASE_VMID" ]; then
     exit 1
 fi
 
-echo "Copiar VM base: ${BASE_VMID}:${BASE_VM}"
+echo "Copiar VM base: ${BASE_VMID},${BASE_VM}"
 cp -r "$SRC" "$DST"
 
 cd $DST/
